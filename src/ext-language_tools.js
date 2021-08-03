@@ -1664,19 +1664,14 @@ var Autocomplete = function() {
             return this.openPopup(this.editor, "", keepPopupPosition);
         }
         var _id = this.gatherCompletionsId;
-        this.gatherCompletions(this.editor, function(err, results) {
-            var detachIfFinished = function() {
-                if (!results.finished) return;
-                return this.detach();
-            }.bind(this);
+        var detachIfFinished = function(results) {
+            if (!results.finished) return;
+            return this.detach();
+        }.bind(this);
 
+        var processResults = function(results) {
             var prefix = results.prefix;
-            var matches = results && results.matches;
-
-            if (!matches || !matches.length)
-                return detachIfFinished();
-            if (prefix.indexOf(results.prefix) !== 0 || _id != this.gatherCompletionsId)
-                return;
+            var matches = results.matches;
 
             this.completions = new FilteredList(matches);
 
@@ -1686,14 +1681,39 @@ var Autocomplete = function() {
             this.completions.setFilter(prefix);
             var filtered = this.completions.filtered;
             if (!filtered.length)
-                return detachIfFinished();
+                return detachIfFinished(results);
             if (filtered.length == 1 && filtered[0].value == prefix && !filtered[0].snippet)
-                return detachIfFinished();
+                return detachIfFinished(results);
             if (this.autoInsert && filtered.length == 1 && results.finished)
                 return this.insertMatch(filtered[0]);
 
             this.openPopup(this.editor, prefix, keepPopupPosition);
+        }.bind(this);
+
+        var isImmediate = true;
+        var immediateResults = null;
+        this.gatherCompletions(this.editor, function(err, results) {
+            var prefix = results.prefix;
+            var matches = results && results.matches;
+
+            if (!matches || !matches.length)
+                return detachIfFinished(results);
+            if (prefix.indexOf(results.prefix) !== 0 || _id != this.gatherCompletionsId)
+                return;
+            if (isImmediate) {
+                immediateResults = results;
+                return;
+            }
+
+            processResults(results);
         }.bind(this));
+        
+        isImmediate = false;
+        if (immediateResults) {
+            var results = immediateResults;
+            immediateResults = null;
+            processResults(results);
+        }
     };
 
     this.cancelContextMenu = function() {
@@ -2087,13 +2107,21 @@ var doLiveAutocomplete = function(e) {
     }
     else if (e.command.name === "insertstring") {
         var prefix = util.getCompletionPrefix(editor);
-        if (prefix && !hasCompleter) {
+        if (prefix && prefix.length >= editor.$liveAutocompletionThreshold && !hasCompleter) {
             var completer = Autocomplete.for(editor);
             completer.autoInsert = false;
             completer.showPopup(editor);
         }
     }
 };
+
+var lastExec_e;
+var liveAutocompleteTimer = lang.delayedCall(function () { doLiveAutocomplete(lastExec_e); }, 0);
+
+var scheduleAutocomplete = function(e) {
+    lastExec_e = e;
+    liveAutocompleteTimer.delay(e.editor.$liveAutocompletionDelay);
+}
 
 var Editor = require("../editor").Editor;
 require("../config").defineOptions(Editor.prototype, "editor", {
@@ -2114,12 +2142,18 @@ require("../config").defineOptions(Editor.prototype, "editor", {
             if (val) {
                 if (!this.completers)
                     this.completers = Array.isArray(val)? val: completers;
-                this.commands.on('afterExec', doLiveAutocomplete);
+                this.commands.on('afterExec', scheduleAutocomplete);
             } else {
-                this.commands.removeListener('afterExec', doLiveAutocomplete);
+                this.commands.removeListener('afterExec', scheduleAutocomplete);
             }
         },
         value: false
+    },
+    liveAutocompletionDelay: {
+        value: 100
+    },
+    liveAutocompletionThreshold: {
+        value: 0
     },
     enableSnippets: {
         set: function(val) {

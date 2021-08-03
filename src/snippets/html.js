@@ -237,9 +237,7 @@ snippet button:s\n\
 snippet button:r\n\
 	<button type=\"reset\">${1}</button>\n\
 snippet canvas\n\
-	<canvas>\n\
-		${1}\n\
-	</canvas>\n\
+	<canvas id=\"${1:canvas}\"></canvas>\n\
 snippet caption\n\
 	<caption>${1}</caption>\n\
 snippet cite\n\
