@@ -1966,7 +1966,7 @@ ace.define("ace/autocomplete", ["require", "exports", "module", "ace/keyboard/ha
 ace.define("ace/autocomplete/text_completer", ["require", "exports", "module", "ace/range"], function (require, exports, module) {
     var Range = require("../range").Range;
 
-    var splitRegex = /[^a-zA-Z_0-9\w]+/;
+    var splitRegex = /[^a-zA-Z_0-9\$\u00C0-\u1FFF\u2C00-\uD7FF\w]+/;
 
     function getWordIndex(doc, pos) {
         var textBefore = doc.getTextRange(Range.fromPoints({ row: 0, column: 0 }, pos));
