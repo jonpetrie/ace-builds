@@ -1387,7 +1387,7 @@ ace.define("ace/autocomplete/util", ["require", "exports", "module"], function (
         }
     };
 
-    var ID_REGEX = /[a-zA-Z_0-9\$\-\u00A2-\u2000\u2070-\uFFFF]/;
+    var ID_REGEX = /[a-zA-Z_0-9\$\u00A2-\u2000\u2070-\uFFFF]/;
 
     exports.retrievePrecedingIdentifier = function (text, pos, regex) {
         regex = regex || ID_REGEX;
